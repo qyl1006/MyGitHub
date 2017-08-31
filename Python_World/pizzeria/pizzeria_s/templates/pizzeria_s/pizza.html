@@ -1,0 +1,19 @@
+{% extends 'pizzeria_s/base.html' %}
+
+{% block content %}
+
+	<p>批萨: {{ pizza }}</p>
+	<ul>
+	{% for topping in entries %}
+		<li>
+			<p>{{ topping.date_added|date:'M d, Y H:i' }}</p>
+			<P>{{ topping.text|linebreaks }}</P>
+		</li>
+	{% empty %}
+		<li>
+			没有其它的批萨配料了.
+		</li>
+	{% endfor %}
+	</ul>
+	
+{% endblock content %} 
