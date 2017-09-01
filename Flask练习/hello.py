@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_script import Manager
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
@@ -38,9 +38,11 @@ class NameForm(Form):
 #data属性获取，然后清空表单字段form.name.data；最后(为False直接)渲染表单模块,	
 @app.route('/', methods=['GET', 'POST'])
 def index():
-	name = None
 	form = NameForm()
 	if form.validate_on_submit():
+		old_name = session.get('name')
+		if old_name is not None and old_name != form.name.data:
+		    flash('看起来你已经更换之前的名字！')
 		session['name'] = form.name.data
 		return redirect(url_for('index'))
 	return render_template('index.html', form=form, name=session.get('name'), 

@@ -32,11 +32,20 @@
 </div>
 {% endblock %}
 
+<!-----渲染Flash消息----------->
 {% block content %}
 <div class="container">
-     {% block page_content %}{% endblock %}
+    {% for message in get_flashed_messages() %}
+    <div class="alert alert-warning">
+<!---------------使用Bootstrap的CSS样式渲染？---------------------------------->
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+	{{ message }}
+    </div>
+    {% endfor %}
+
+    {% block page_content %}{% endblock %}
 </div>
-{% endblock %}	
+{% endblock %}
 
 <!------添加本地化日期和时间，使用中文zh-CN------------->
 {% block scripts %}
