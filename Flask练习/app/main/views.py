@@ -1,5 +1,5 @@
 from datetime import datetime  #关于渲染时间的一个变量
-from flask import render_template, session, redirect, url_for
+from flask import render_template, session, redirect, url_for, current_app
 
 from . import main
 from .forms import NameForm
@@ -24,7 +24,7 @@ def index():
 #若定义了管理员邮箱——True	#发送邮箱实例，#每当输入新的name就自动发邮件给管理员	
  ##mail/new_user 在templates下面子文件夹mail里面,调用名字为new_user的txt和html文件,
  ##网上看的，不知道对不对？	
-			if app.config['FLASKY_ADMIN']:  
+			if current_app.config['FLASKY_ADMIN']:  
 				send_email(app.config['FLASKY_ADMIN'], 'New User', 
 							'mail/new_user', user=user)
 		else:
