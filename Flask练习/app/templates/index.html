@@ -13,14 +13,13 @@
       {% endif %}
       </h1>
 </div>
-{{ wtf.quick_form(form) }}
-
-<!-----渲染时间------->
-<p> 现在的日期和时间是：{{ moment(current_time).format('LLL') }}.</p>
-<p>已经过去了：{{ moment(current_time).fromNow(refresh=True) }}</p>
+<div>
+    {% if current_user.can(Permission.WRITE_ARTICLES) %}
+    {{ wtf.quick_form(form) }}
+    {% endif %}
+</div>
+{% include '_posts.html' %}
 {% endblock %}
-
-
 
 
 

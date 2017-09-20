@@ -2,18 +2,20 @@ from . import db, login_manager
 from werkzeug .security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from flask import current_app
+from flask import current_app, request
 from . import db
 from datetime import datetime
+import hashlib
 
-#定义Role和User模型
+#定义Role模型
 class Role(db.Model):
 	__tablename__ = 'roles'
 	id = db.Column(db.Integer, primary_key=True)
 	name = db.Column(db.String(64), unique=True)
 	default = db.Column(db.Boolean, default=False, index=True)
 	permissions = db.Column(db.Integer)
-	users = db.relationship('User', backref='role', lazy='dynamic')
+	##与User模型的关系  一对User
+	users = db.relationship('User', backref='role', lazy='dynamic') #与User类相链接的桥梁
 	
 #在数据库中创建角色，使用了静态方法;True与False各为对应default的值	
 	@staticmethod
@@ -39,15 +41,51 @@ class Role(db.Model):
 	
 	def __repr__(self):
 		return '<Role %r>' % self.name
-		
+	
+##定义文章博客Post模型
+class Post(db.Model):
+	__tablename__ = 'posts'
+	id = db.Column(db.Integer, primary_key=True)
+	body = db.Column(db.Text)  #文章内容
+	timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow) #时间，距发布body多久
+	##与User模型关系 多对User
+	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))	#外键，和users表相连  
+	
+##########################################################################	
+#####以下。。使用ForgeryPy包生成大量的博客文章，用测试用
+
+	@staticmethod  
+	def generate_fake(count=100):
+		from random import seed,randint  
+		import forgery_py  
+          
+		seed()  
+		user_count = User.query.count()        #这行是查询一共有生成了多少虚拟用户  
+		for i in range(count):
+			u = User.query.offset(randint(0,user_count-1)).first()  
+			p = Post(body = forgery_py.lorem_ipsum.sentences(randint(1,3)),  
+					timestamp = forgery_py.date.date(True),  
+					author = u)            #这一行，将用户和所发的文章绑定了起来  
+		db.session.add(p)  
+		db.session.commit()  
+#######################################################################
+	
+	def __repr__(self):
+		return '<Post %r>' % self.body
+	
+
+##定义User模型	
 class User(UserMixin, db.Model):
 	__tablename__ = 'users'
 	id = db.Column(db.Integer, primary_key=True)
 	email = db.Column(db.String(64), unique=True, index=True)
 	username = db.Column(db.String(64), unique=True, index=True)
 	password_hash = db.Column(db.String(128))
-	rold_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+	##与Role模型的关系 多对Role
+	role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))  #外键，与roles表相连
 	confirmed = db.Column(db.Boolean, default=False)  #confirmed默认属性为False
+	##与Post模型关系 一对Post
+	posts = db.relationship('Post', backref='author', lazy='dynamic') #与Post类相连接的桥梁
 	
 	###用户个人信息字段
 	name = db.Column(db.String(64))
@@ -56,18 +94,20 @@ class User(UserMixin, db.Model):
 	member_since = db.Column(db.DateTime(), default=datetime.utcnow)
 	last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
 	
+	###在User模型中加入密码散列，分别用于在注册用户和验证用户环节
 	@property
 	def password(self):
-		raise AttributeError('password is not a readable attribute')
+		raise AttributeError('password is not a readable attribute')  ##密码只写属性
 
 	@password.setter
 	def password(self, password):
-		self.password_hash = generate_password_hash(password)
+		self.password_hash = generate_password_hash(password)  #密码的散列值
 		
 	def verify_password(self, password):
-		return check_password_hash(self.password_hash, password)
+		return check_password_hash(self.password_hash, password) ##比较用户输入的密码与数据库里
+																	##散列值，一致就返回True
 
-#? 不知道对不对
+#? 不知道对不对！！加载用户的回调函数
 	@login_manager.user_loader
 	def load_user(user_id):
 		return User.query.get(int(user_id))
@@ -115,6 +155,41 @@ class User(UserMixin, db.Model):
 	def ping(self):
 		self.last_seen = datetime.utcnow()
 		db.session.add(self)	
+	
+	####生成Gravatar URL 一个头像服务网站的URL，通过计算每个邮箱地址的MD5散列值.
+	def gravatar(self, size=100, default='idention', rating='g'):
+		if request.is_secure:  ###判断request是否为https 
+			url = 'https://secure.gravatar.com/acatar'
+		else:
+			url = 'http://www.gravatar.com/avatar'
+		hash = hashlib.md5(self.email.encode('utf-8')).hexdigest()
+		return '{url}/{hash}?s={size}&d={default}&r=[rating]'.format(
+			url=url, hash=hash, size=size, default=default, rating=rating)
+			
+#####################################################################
+###以下。。使用ForgeryPy包生成大量的虚拟用户和，用测试用
+	@staticmethod
+	def generate_fake(count=100):
+		from sqlalchemy.exc import IntegrityError
+		from random import seed
+		import forgery_py
+		
+		seed()
+		for i in range(count):
+			u = User(email=forgery_py.internet.email_address(),
+					 username=forgery_py.internet.user_name(True),
+					 password=forgery_py.lorem_ipsum.word(),
+					 confirmed=True,
+					 name=forgery_py.name.full_name(),
+					 location=forgery_py.address.city(),
+					 about_me=forgery_py.lorem_ipsum.sentence(),
+					 member_since=forgery_py.date.date(True))
+			db.session.add(u)
+			try:
+				db.session.commit()
+			except IntegrityError:
+				db.session.rollback()  ##异常就回滚
+##################################################################			
 	
 	def __repr__(self):
 		return '<User %r>' % self.username
