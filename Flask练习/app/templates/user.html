@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
+{% import "_macros.html" as macros %}
 
 {% block title %}用户资料{% endblock %}
 
@@ -54,5 +55,11 @@
 
 <h3>{{ user.username }}您发布的博客:</h3>
 {% include '_posts.html' %}
+
+{% if pagination %}
+<div class="pagination">
+     {{ macros.pagination_widget(pagination, 'user', username = user.username) }}
+</div>
+{% endif %}
 {% endblock %}
 

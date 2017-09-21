@@ -157,7 +157,7 @@ class User(UserMixin, db.Model):
 		db.session.add(self)	
 	
 	####生成Gravatar URL 一个头像服务网站的URL，通过计算每个邮箱地址的MD5散列值.
-	def gravatar(self, size=100, default='idention', rating='g'):
+	def gravatar(self, size=100, default='identicon', rating='g'):
 		if request.is_secure:  ###判断request是否为https 
 			url = 'https://secure.gravatar.com/acatar'
 		else:

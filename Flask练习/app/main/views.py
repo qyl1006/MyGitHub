@@ -20,10 +20,10 @@ def index():
 		return redirect(url_for('.index'))
 	page = request.args.get('page', 1, type=int)
 	pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
-				page, per_page=current_app.config['FLASKY_PER_PAGE'],
+				page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
 				error_out=False)
 				##error_out=False,当请求页数超出范围，则会返回404错误 
-	posts = pagination.itmes
+	posts = pagination.items
 	return render_template('index.html', form=form, posts=posts, pagination=pagination)
 
 
@@ -33,7 +33,8 @@ def user(username):
 	user = User.query.filter_by(username=username).first()
 	if user is None:
 		abort(404)
-	posts = user.posts.order_by(Post.timestamp.desc()).all() ##找当前用户的posts属性(对应Post类里面的所有博客
+	####下面找当前用户的posts属性(对应Post类里面的所有博客
+	posts = user.posts.order_by(Post.timestamp.desc()).all() 
 	return render_template('user.html', user=user, posts=posts)
 	
 	
