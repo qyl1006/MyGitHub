@@ -72,7 +72,7 @@ class Post(db.Model):
 	timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow) #时间，距发布body多久
 	##与User模型关系 多对User
 	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))	#外键，和users表相连  
-
+	comments = db.relationship('Comment', backref='post', lazy='dynamic') ## 一对多关系，’一‘侧
 
 	def __repr__(self):
 		return '<Post %r>' % self.body
@@ -121,6 +121,7 @@ class User(UserMixin, db.Model):
 	confirmed = db.Column(db.Boolean, default=False)  #confirmed默认属性为False
 	##与Post模型关系 一对Post
 	posts = db.relationship('Post', backref='author', lazy='dynamic') #与Post类相连接的桥梁
+	comments = db.relationship('Comment', backref='author', lazy='dynamic')##与Comment的关系， 一对多，’一‘侧
 	
 	###用户个人信息字段
 	name = db.Column(db.String(64))
@@ -298,3 +299,21 @@ class AnonymousUser(AnonymousUserMixin):
 login_manager.anonymous_user = AnonymousUser
 		
 
+######建立用户评论Comment模型
+class Comment(db.Model):
+	__tablename__ = 'comments'
+	id = db.Column(db.Integer, primary_key=True)
+	body = db.Column(db.Text)
+	body.html = db.Column(db.Text)
+	timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+	disable = db.Column(db.Boolean)
+	author_id = db.Column(db.Integer, db.ForeignKey('users.id')) #外键 对应User
+	post_id = db.Column(db.Integer, db.ForeignKey('posts.id')) #外键 对应Post
+	
+	@staticmethod
+	def on_changed_body(target, value, oldvalue, initiator):
+		allowed_tags = ['a', 'abbr', 'acronym', 'b', 'code', 'em', 'i', 'strong']
+		target.body.html = bleach.linkify(bleach.clean(markdown(value,
+							output_format='html'), tags=allowed_tags, strip=True))
+							
+db.event.listen(Comment.body, 'set', Comment.on_changed_body)
