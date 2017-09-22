@@ -9,6 +9,14 @@ import hashlib
 from markdown import markdown
 import bleach
 
+#权限常量,权限类
+class Permission:
+	FOLLOW = 0x01
+	COMMENT = 0x02
+	WRITE_ARTICLES = 0x04
+	MODERATE_COMMENTS = 0x08
+	ADMINISTER = 0x80
+
 #定义Role模型
 class Role(db.Model):
 	__tablename__ = 'roles'
@@ -43,6 +51,17 @@ class Role(db.Model):
 	
 	def __repr__(self):
 		return '<Role %r>' % self.name
+	
+
+#####多对多关系的关联表。。。现定义成Follow模型###### 之前这模型放在最后面，然后User.followed一直找不到Follow， 套路我一波，气
+class Follow(db.Model):
+	__tablename__ = 'follows'
+	follower_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+							primary_key=True)   ##外键，'多'的一侧，关注者的id。。user.id， 设为主键
+	followed_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+							primary_key=True) ##外键， '多'的一侧，被关注者的id。。user.id。。设主键
+	timestamp = db.Column(db.DateTime, default=datetime.utcnow)  ## 用来记录时间点
+
 	
 ##定义文章博客Post模型
 class Post(db.Model):
@@ -109,6 +128,44 @@ class User(UserMixin, db.Model):
 	about_me = db.Column(db.Text())
 	member_since = db.Column(db.DateTime(), default=datetime.utcnow)
 	last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
+
+# 使用两个一对多关系实现的多对多关系。。
+	followed = db.relationship('Follow',
+								foreign_keys=(Follow.follower_id),
+								backref=db.backref('follower', lazy='joined'),
+                                lazy='dynamic',
+                                cascade='all, delete-orphan')
+#			##foreign_key指定外键，db.backref()参数回引Follow模型，lazy='dynamic'是User这侧的，
+#			## 用来返回‘多’那侧的记录：follower,时间。cascade参数是和删除对象时候，关联表格里面的内容会不会一起删掉有关系
+#			###最后这个 关注者列表吧followed， 就是说 我关注的人 的表
+	followers = db.relationship('Follow',
+								foreign_keys=[Follow.followed_id],
+								backref=db.backref('followed', lazy='joined'),
+								lazy='dynamic',
+								cascade='all, delete-orphan')
+			#####大致和上面followed相同，这个是 被关注者列表followers， 关注自己的人 自己粉丝 的表
+######关注关系的辅助方法  为什么他们可以加过滤器使用？因为lazy='dynamic'，返回查询对象，可以添加过滤器，不知道对不对
+###第一个 如果这个人user我没有关注，那我就关注她
+	def follow(self, user):
+		if not self.is_following(user):
+			f = Follow(follower=self, followed=user)
+			db.session.add(f)
+			
+###第二个 如果这个人user我关注了她，我就取消关注她， 删除delete
+	def unfollow(self, user):
+		f = self.followed.filter_by(followed_id=user.id).first()
+		if f:
+			db.session.delete(f)
+			
+####第三个 这个人user在我所有我所关注人当中，不是None的，就返回True
+	def is_following(self, user):
+		return self.followed.filter_by(followed_id=user.id).first() is not None
+####第四个 这个人user在所有关注我的人当中，我是被关注的，，user是我的粉丝的话。。不是None的，返回True
+	def is_followed_by(self, user):
+		return self.followers.filter_by(follower_id=user.id).first() is not None
+
+
+
 	
 	###在User模型中加入密码散列，分别用于在注册用户和验证用户环节
 	@property
@@ -220,12 +277,4 @@ class AnonymousUser(AnonymousUserMixin):
 		return False
 login_manager.anonymous_user = AnonymousUser
 		
-#权限常量,权限类
-class Permission:
-	FOLLOW = 0x01
-	COMMENT = 0x02
-	WRITE_ARTICLES = 0x04
-	MODERATE_COMMENTS = 0x08
-	ADMINISTER = 0x80
 
-	
