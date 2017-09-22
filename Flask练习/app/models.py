@@ -215,6 +215,8 @@ class User(UserMixin, db.Model):
 				self.role = Role.query.filter_by(permissions=0xff).first()
 			if self.role is None:
 				self.role = Role.query.filter_by(default=True).first()
+	##新建用户时把用户设为自己的关注者
+		self.follow(self)
 	
 	###检查用户是否有指定的权限
 	def can(self, permissions):
@@ -262,8 +264,26 @@ class User(UserMixin, db.Model):
 				db.session.commit()
 			except IntegrityError:
 				db.session.rollback()  ##异常就回滚
-##################################################################			
-	
+##################################################################	
+
+##获取所关注用户的文章
+	@property            ###装饰器， 作用把followed_posts作为属性来访问
+	def followed_posts(self):
+		return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
+				.filter(Follow.follower_id == self.id)
+
+##########################。。。。创建函数更新数据库。。。#####
+###把用户设为自己的关注者
+	@staticmethod
+	def add_self_follows():
+		for user in User.query.all():
+			if not user.is_following(user):
+				user.follow(user)
+				db.session.add(user)
+				db.session.commit()
+
+		
+			
 	def __repr__(self):
 		return '<User %r>' % self.username
 

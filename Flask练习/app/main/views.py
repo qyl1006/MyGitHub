@@ -1,5 +1,5 @@
 from datetime import datetime  #关于渲染时间的一个变量
-from flask import render_template, session, redirect, url_for, current_app, flash, request
+from flask import render_template, session, redirect, url_for, current_app, flash, request, make_response
 from flask_login import login_required, current_user
 from . import main
 from .forms import PostForm, EditProfileForm, EditProfileAdminForm
@@ -18,13 +18,22 @@ def index():
 					author=current_user._get_current_object())   ###这里的current_user._get_current_object()的用法，是提取真正的对象   优点懵逼！！？
 		db.session.add(post)
 		return redirect(url_for('.index'))
+	###显示所有博客文章或只显示所关注用户的文章，show_followed为非空字符串时，只显示关注用户的文章
+	show_followed = False
+	if current_user.is_authenticated:
+		show_followed = bool(request.cookies.get('show_followed', ''))  ##获取字典中show_followed的值
+	if show_followed:
+		query = current_user.followed_posts
+	else:
+		query = Post.query              ###只能说这些query使用的666, 精巧。。lazy='dynamic'
 	page = request.args.get('page', 1, type=int)
-	pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+	pagination = query.order_by(Post.timestamp.desc()).paginate(
 				page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
 				error_out=False)
 				##error_out=False,当请求页数超出范围，则会返回404错误 
 	posts = pagination.items
-	return render_template('index.html', form=form, posts=posts, pagination=pagination)
+	return render_template('index.html', form=form, posts=posts,
+							show_followed=show_followed, pagination=pagination)
 
 
 #用户资料页面的路由。很好奇为什么放这里了，app/auth/views与app/main/views这两个添加路由.py有什么区别？
@@ -178,3 +187,21 @@ def followed_by(username):
 	return render_template('followers.html', user=user, title="关注的人",
 							endpoint='.followed_by', pagination=pagination,
 							follows=follows)
+
+
+########查询所有文章还是所关注用户的文章， 结合首页‘/’视图函数使用
+#查询所有用户文章
+@main.route('/all')
+@login_required
+def show_all():
+	resp = make_response(redirect(url_for('.index')))
+	resp.set_cookie('show_followed', '', max_age=30*24*60*60)  ##cookie名show_followed的值为None，max_age设置过期时间,单位为秒s
+	return resp
+	
+###查询使关注用户的文章
+@main.route('/followed')
+@login_required
+def show_followed():
+	resp = make_response(redirect(url_for('.index')))
+	resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
+	return resp
