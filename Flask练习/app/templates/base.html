@@ -36,6 +36,9 @@
 		    {% endif %}
 		</ul>
 		<ul class="nav navbar-nav navbar-right">
+		    {% if current_user.can(Permission.MODERATE_COMMENTS) %}
+		    <li><a href="{{ url_for('main.moderate') }}">管理评论</a></li>
+		    {% endif %}
 		    {% if current_user.is_authenticated %}
 		<!-- 这下面应该是一个下拉列表的列表选项，这个应该是下拉列表的显示按钮 -->
 		    <li class="dropdown">                                

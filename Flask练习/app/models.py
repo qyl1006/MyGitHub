@@ -306,7 +306,7 @@ class Comment(db.Model):
 	body = db.Column(db.Text)
 	body.html = db.Column(db.Text)
 	timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-	disable = db.Column(db.Boolean)
+	disabled = db.Column(db.Boolean)
 	author_id = db.Column(db.Integer, db.ForeignKey('users.id')) #外键 对应User
 	post_id = db.Column(db.Integer, db.ForeignKey('posts.id')) #外键 对应Post
 	

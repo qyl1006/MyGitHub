@@ -222,3 +222,40 @@ def show_followed():
 	resp = make_response(redirect(url_for('.index')))
 	resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
 	return resp
+
+
+####管理评论的路由
+@main.route('/moderate')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate():
+	page = request.args.get('page', 1, type=int)
+	pagination = Comment.query.order_by(Comment.timestamp.desc()).paginate(
+					page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
+					error_out=False)
+	comments = pagination.items
+	return render_template('moderate.html', comments=comments,
+							pagination=pagination, page=page)
+
+##评论管理路由， 禁用评论或启用评论
+##启用评论
+@main.route('/moderate/enable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_enable(id):
+	comment = Comment.query.get_or_404(id)
+	comment.disabled = False
+	db.session.add(comment)
+	return redirect(url_for('.moderate',
+								page=request.args.get('page', 1, type=int)))
+								
+#禁用评论
+@main.route('/moderate/disable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_disable(id):
+	comment = Comment.query.get_or_404(id)
+	comment.disabled = True
+	db.session.add(comment)
+	return redirect(url_for('.moderate',
+								page=request.args.get('page', 1, type=int)))
