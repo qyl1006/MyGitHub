@@ -2,15 +2,19 @@
 {% import "bootstrap/wtf.html" as wtf %}
 {% import "_macros.html" as macros %}
 
-{% block title %}豆瓣小组{% endblock %}
+{% block title %}X博客{% endblock %}
 
 {% block page_content %}
 <div class="page-header">
-      <h1>你好!
+      <h1>你好,
       {% if current_user.is_authenticated %}
 	  {{ current_user.username }}
+	  <br>
+		永远相信美好的事情 即将发生
       {% else %}
-	  同学！templates/
+	  同学
+	  <br>
+		永远相信美好的事情 即将发生
       {% endif %}
       </h1>
 </div>

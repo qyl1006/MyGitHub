@@ -30,7 +30,7 @@ class RegistrationForm(Form):
 		if User.query.filter_by(username=field.data).first():
 			raise ValidationError('该用户名已占用')
 
-##自己尝试写几种不同的更改密码的方法
+##自己尝试写更改密码的方法
 class Old_password_modifiedForm(Form):
 	old_password = PasswordField('输入旧密码', validators=[Required()])
 	new_password = PasswordField('输入你的新密码', validators=[
